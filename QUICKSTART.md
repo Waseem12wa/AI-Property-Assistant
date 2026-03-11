@@ -60,6 +60,13 @@ start chat-interface.html
 - Verify the workflow is activated (toggle switch is ON)
 - Refresh the chat interface page
 
+### "Failed to execute 'json' on 'Response'" or Empty Response
+**This error has been fixed!** If you still see it:
+- Make sure you're using the latest `chat-interface.html`
+- Check that your n8n workflow has a **Respond to Webhook** node
+- Verify the Respond to Webhook node is configured to return the AI response
+- Check n8n execution logs for errors in the workflow
+
 ### Voice input not working
 - Use Chrome or Edge browser (best support)
 - Allow microphone permissions when prompted
@@ -69,6 +76,7 @@ start chat-interface.html
 - Check n8n workflow logs for errors
 - Verify environment variables are set correctly
 - Make sure Supabase database has properties
+- Ensure the workflow ends with a "Respond to Webhook" node
 
 ## Features
 

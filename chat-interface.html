@@ -494,20 +494,46 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const data = await response.json();
-                
-                // Extract the bot response
+                // Try to parse as JSON first, fall back to text if that fails
+                let data;
                 let botResponse = '';
-                if (typeof data === 'string') {
-                    botResponse = data;
-                } else if (data.response) {
-                    botResponse = data.response;
-                } else if (data.message) {
-                    botResponse = data.message;
-                } else if (data.output) {
-                    botResponse = data.output;
-                } else {
-                    botResponse = JSON.stringify(data, null, 2);
+                
+                const contentType = response.headers.get('content-type');
+                
+                try {
+                    // First, get the response as text
+                    const responseText = await response.text();
+                    
+                    // If response is empty, show a default message
+                    if (!responseText || responseText.trim() === '') {
+                        botResponse = 'I received your message but got an empty response. Please check if the n8n workflow is configured correctly.';
+                    } else {
+                        // Try to parse as JSON
+                        try {
+                            data = JSON.parse(responseText);
+                            
+                            // Extract the bot response from JSON
+                            if (typeof data === 'string') {
+                                botResponse = data;
+                            } else if (data.response) {
+                                botResponse = data.response;
+                            } else if (data.message) {
+                                botResponse = data.message;
+                            } else if (data.output) {
+                                botResponse = data.output;
+                            } else if (data.text) {
+                                botResponse = data.text;
+                            } else {
+                                // If JSON but no recognizable field, stringify it
+                                botResponse = JSON.stringify(data, null, 2);
+                            }
+                        } catch (jsonError) {
+                            // If JSON parsing fails, use the raw text response
+                            botResponse = responseText;
+                        }
+                    }
+                } catch (textError) {
+                    botResponse = 'Error reading response from server: ' + textError.message;
                 }
 
                 addMessage(botResponse, 'bot');
