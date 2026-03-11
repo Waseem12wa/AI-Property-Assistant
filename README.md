@@ -59,7 +59,7 @@ Bot: "Here are 2 villas with pool amenities..."
 ## Table of Contents
 
 1. [Complete Setup Process](#complete-setup-process)
-2. [Chatbot Integration Options](#chatbot-integration-options)
+2. [Chatbot Integration Options](#chatbot-integration-options) - **Includes Web Chat Interface**
 3. [Example Queries & Suggestions](#example-queries--suggestions)
 4. [Workflow Architecture Details](#workflow-architecture-details)
 5. [Testing with comprehensive-test.ps1](#testing-with-comprehensive-testps1)
@@ -473,6 +473,7 @@ curl -X POST http://localhost:5678/webhook/property-chat `
 - [x] n8n workflow imported and active
 - [x] All API keys configured
 - [x] Webhook responding correctly
+- [x] Web chat interface (chat-interface.html) ready to use
 - [x] Ready for comprehensive testing
 
 ---
@@ -490,12 +491,41 @@ curl -X POST http://localhost:5678/webhook/property-chat `
   -d '{"message": "Show me 2 bedroom apartments in Miami under $3500"}'
 ```
 
-### Option 2: Web Chat Interface
+### Option 2: Web Chat Interface (RECOMMENDED)
 
-You can integrate this with any web chat UI by connecting to the webhook:
+**Use the included professional chat interface:**
 
+1. **Open the chat interface:**
+   ```powershell
+   # Simply open the HTML file in your browser
+   start chat-interface.html
+   ```
+   Or double-click `chat-interface.html` in File Explorer
+
+2. **Features included:**
+   - ✅ **Professional gradient UI** - Modern, attractive design
+   - ✅ **Voice Input** - Click the microphone icon to speak your query
+   - ✅ **Quick Suggestions** - 8 pre-built example queries as buttons
+   - ✅ **Real-time Chat** - Message history with timestamps
+   - ✅ **Typing Indicators** - Shows when bot is processing
+   - ✅ **Auto-scroll** - Always shows latest messages
+   - ✅ **Error Handling** - Clear status messages
+
+3. **How to use:**
+   - Make sure n8n workflow is running (see setup steps)
+   - Open `chat-interface.html` in Chrome, Edge, or Firefox
+   - Type your query or click a suggestion button
+   - Or click the microphone icon 🎤 and speak your request
+   - Press Enter or click Send
+
+4. **Voice Input Requirements:**
+   - Works best in Chrome or Edge browsers
+   - Requires microphone permissions
+   - Click 🎤 icon → Speak clearly → Bot captures your speech
+
+**For custom integrations:**
 ```javascript
-// Example JavaScript integration
+// Example JavaScript code to integrate with your own UI
 async function sendMessage(userMessage) {
   const response = await fetch('http://localhost:5678/webhook/property-chat', {
     method: 'POST',
@@ -1138,6 +1168,7 @@ This covers:
 ```
 AI Data House/
 
+ chat-interface.html        # Professional web chat UI with voice input
  n8n-workflow.json          # Complete 13-node workflow (uses env variables)
  supabase-schema.sql        # Database schema + 55 sample properties
  comprehensive-test.ps1     # Full test suite (30+ scenarios)
