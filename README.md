@@ -1,6 +1,6 @@
 # AI Property Assistant - Complete Setup & Demo Guide
 
-## 🎯 Project Overview
+## Project Overview
 
 This is a **production-ready AI Property Assistant chatbot** built as a hiring assessment project, demonstrating:
 
@@ -9,17 +9,17 @@ This is a **production-ready AI Property Assistant chatbot** built as a hiring a
 - **Groq AI (llama-3.3-70b-versatile)** - Fast LLM for natural language understanding
 - **OpenWeather API** - Real-time weather data integration
 
-### Key Features ✨
-- ✅ **Stateful Conversations** - Maintains context across multiple messages using `getWorkflowStaticData`
-- ✅ **Smart City-Based Caching** - Reduces duplicate database queries by 50%+
-- ✅ **Intelligent Intent Routing** - AI distinguishes between property search vs weather queries
-- ✅ **Property Type Enforcement** - Requires property_type before executing database searches
-- ✅ **Dynamic Price & Bedroom Filtering** - Supports budget ranges and specific bedroom counts
-- ✅ **Top Results** - Returns best matching properties with complete details
+### Key Features 
+-  **Stateful Conversations** - Maintains context across multiple messages using `getWorkflowStaticData`
+-  **Smart City-Based Caching** - Reduces duplicate database queries by 50%+
+-  **Intelligent Intent Routing** - AI distinguishes between property search vs weather queries
+-  **Property Type Enforcement** - Requires property_type before executing database searches
+-  **Dynamic Price & Bedroom Filtering** - Supports budget ranges and specific bedroom counts
+-  **Top Results** - Returns best matching properties with complete details
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Complete Setup Process](#-complete-setup-process)
 2. [Workflow Architecture Details](#-workflow-architecture-details)
@@ -30,7 +30,7 @@ This is a **production-ready AI Property Assistant chatbot** built as a hiring a
 
 ---
 
-## ⚠️ Important: API Keys Required
+## Important: API Keys Required
 
 **Before you start, you'll need to obtain your own API keys:**
 
@@ -43,11 +43,11 @@ This is a **production-ready AI Property Assistant chatbot** built as a hiring a
 2. Fill in your actual API keys
 3. Set environment variables before starting n8n (see Step 5)
 
-**🔒 Security Note:** Never commit your `.env` file or actual API keys to Git!
+** Security Note:** Never commit your `.env` file or actual API keys to Git!
 
 ---
 
-## 🚀 Complete Setup Process
+## Complete Setup Process
 
 Follow these steps in order for a complete installation from scratch.
 
@@ -138,7 +138,7 @@ docker run -it --rm --name n8n -p 5678:5678 -v C:\\Users\\YourUser\\.n8n:/home/n
 1. Click **"Table Editor"** in sidebar
 2. Select `properties` table
 3. You should see 55 rows of property data
-4. Try filtering: Click "Filters" → `city` equals `New York` → Should show ~9 properties
+4. Try filtering: Click "Filters"  `city` equals `New York`  Should show ~9 properties
 
 ---
 
@@ -166,7 +166,7 @@ YOUR_SUPABASE_ANON_KEY
 
 #### 3.1 Get OpenWeather API Key
 
-**⚠️ You need to get your own API key:**
+** You need to get your own API key:**
 ```
 YOUR_OPENWEATHER_API_KEY_HERE
 ```
@@ -184,7 +184,7 @@ YOUR_OPENWEATHER_API_KEY_HERE
 
 #### 4.1 Get Groq API Key
 
-**⚠️ You need to get your own API key:**
+** You need to get your own API key:**
 ```
 YOUR_GROQ_API_KEY_HERE
 ```
@@ -218,10 +218,10 @@ $env:OPENWEATHER_API_KEY="YOUR_OPENWEATHER_API_KEY"
 $env:GROQ_API_KEY="YOUR_GROQ_API_KEY"
 
 # Verify they're set
-Write-Host "✓ Environment variables configured" -ForegroundColor Green
+Write-Host " Environment variables configured" -ForegroundColor Green
 ```
 
-**⚠️ Important:** These environment variables are temporary and reset when you close PowerShell. You need to set them each time before starting n8n.
+** Important:** These environment variables are temporary and reset when you close PowerShell. You need to set them each time before starting n8n.
 
 ---
 
@@ -259,7 +259,7 @@ npx n8n
 
 **Result:** Workflow appears with 13 nodes connected
 
-**⚠️ Important:** The workflow uses environment variables for API keys:
+** Important:** The workflow uses environment variables for API keys:
 - `$env.SUPABASE_URL`
 - `$env.SUPABASE_ANON_KEY`
 - `$env.OPENWEATHER_API_KEY`
@@ -281,8 +281,8 @@ const staticData = getWorkflowStaticData('global');
 This enables persistent conversation memory that survives across webhook calls.
 
 **How it works:**
-- First message from user → Creates empty state
-- Subsequent messages → Loads previous state
+- First message from user  Creates empty state
+- Subsequent messages  Loads previous state
 - State persists until n8n is restarted
 
 **To verify:**
@@ -298,7 +298,7 @@ This enables persistent conversation memory that survives across webhook calls.
 2. Find the **"Inactive"** toggle switch  
 3. Click to change to **"Active"** (turns green)
 
-**✅ Your webhook is now live at:**
+** Your webhook is now live at:**
 ```
 http://localhost:5678/webhook/property-chat
 ```
@@ -327,18 +327,18 @@ http://localhost:5678/webhook/property-chat
 
 **Data Flow:**
 ```
-User Message → State Init → AI Analysis → Intent Routing
-                                              ↓
-                    ┌─────────────────────────┼─────────────────────┐
-                    ↓                         ↓                     ↓
+User Message  State Init  AI Analysis  Intent Routing
+                                              
+                    
+                                                                  
               Property Search            Weather Query         Clarification
-                    ↓                         ↓                     ↓
+                                                                  
            Check Cache/Search          Call Weather API      Ask for Info
-                    ↓                         ↓                     ↓
+                                                                  
               Format Results            Format Weather        Format Question
-                    ↓                         ↓                     ↓
-                    └─────────────────────────┴─────────────────────┘
-                                              ↓
+                                                                  
+                    
+                                              
                                     Return to User
 ```
 
@@ -359,16 +359,16 @@ User Message → State Init → AI Analysis → Intent Routing
 
 **Cache Logic:**
 1. User searches for "Apartments in New York"
-2. Query Supabase → Returns results
+2. Query Supabase  Returns results
 3. Store in cache: `cache["New York_Apartment"] = { results, timestamp }`
 4. User refines: "I want 2 bedrooms"
-5. **Cache hit!** → Filter cached results, no database query
+5. **Cache hit!**  Filter cached results, no database query
 6. User changes: "Show me Villas instead"
-7. **Cache miss** (different property_type) → New database query
+7. **Cache miss** (different property_type)  New database query
 
 **Cache Invalidation:**
-- City changes → New cache key
-- Property type changes → New cache key
+- City changes  New cache key
+- Property type changes  New cache key
 - State changes persist but cache refreshes
 
 **Benefits:**
@@ -429,7 +429,7 @@ curl -X POST http://localhost:5678/webhook/property-chat `
 
 ### Step 11: Prepare Final Deliverables
 
-**✅ Checklist:**
+** Checklist:**
 - [x] Supabase database with 55 properties
 - [x] n8n workflow imported and active
 - [x] All API keys configured
@@ -438,7 +438,7 @@ curl -X POST http://localhost:5678/webhook/property-chat `
 
 ---
 
-## 🏗️ Workflow Architecture Details
+##  Workflow Architecture Details
 
 ### Complete 13-Node Breakdown
 
@@ -533,9 +533,9 @@ return {
 **Purpose:** Route to appropriate handler
 
 **Routing:**
-- **Output 0** → Property Search
-- **Output 1** → Weather Query
-- **Output 2** → Clarification
+- **Output 0**  Property Search
+- **Output 1**  Weather Query
+- **Output 2**  Clarification
 
 ---
 
@@ -547,8 +547,8 @@ return {
 
 **TRUE Path:**
 - Checks if cacheKey exists
-- If cached → Use Cached Results
-- If not cached → Query Supabase
+- If cached  Use Cached Results
+- If not cached  Query Supabase
 
 **FALSE Path:**
 - Goes to Handle Clarification
@@ -560,7 +560,7 @@ See full workflow JSON for complete implementation details.
 
 ---
 
-## 🧪 Testing & Validation
+##  Testing & Validation
 
 ### Mandatory Test: \"The Fragmented Lead\"
 
@@ -576,8 +576,8 @@ curl -X POST http://localhost:5678/webhook/property-chat `
 ```
 
 **Expected:**
-- ✅ Updates state: `property_type: \"Apartment\"`
-- ✅ Asks for more info (no database query yet)
+-  Updates state: `property_type: \"Apartment\"`
+-  Asks for more info (no database query yet)
 
 ---
 
@@ -589,11 +589,11 @@ curl -X POST http://localhost:5678/webhook/property-chat `
 ```
 
 **Expected:**
-- ✅ Executes database query
-- ✅ Returns apartment listings
-- ✅ Creates cache: `New York_Apartment`
+-  Executes database query
+-  Returns apartment listings
+-  Creates cache: `New York_Apartment`
 
-**In n8n:** Check execution log → Should go through \"Query Supabase\" node
+**In n8n:** Check execution log  Should go through \"Query Supabase\" node
 
 ---
 
@@ -605,11 +605,11 @@ curl -X POST http://localhost:5678/webhook/property-chat `
 ```
 
 **Expected:**
-- ✅ Routes to Weather API
-- ✅ Returns New York weather
-- ✅ **State still has property_type and city!**
+-  Routes to Weather API
+-  Returns New York weather
+-  **State still has property_type and city!**
 
-**In n8n:** Check \"Initialize State\" node → Verify state persists
+**In n8n:** Check \"Initialize State\" node  Verify state persists
 
 ---
 
@@ -621,10 +621,10 @@ curl -X POST http://localhost:5678/webhook/property-chat `
 ```
 
 **Expected:**
-- ✅ Updates: `min_price: 2000, max_price: 4000`
-- ✅ **Uses cached results** (no database query)
-- ✅ Filters by price
-- ✅ Response includes cache indicator
+-  Updates: `min_price: 2000, max_price: 4000`
+-  **Uses cached results** (no database query)
+-  Filters by price
+-  Response includes cache indicator
 
 **In n8n:** Should go through \"Use Cached Results\" NOT \"Query Supabase\"
 
@@ -638,10 +638,10 @@ curl -X POST http://localhost:5678/webhook/property-chat `
 ```
 
 **Expected:**
-- ✅ Updates: `property_type: \"Studio\"`
-- ✅ **New database query** (cache miss)
-- ✅ Maintains city and price range
-- ✅ Creates new cache: `New York_Studio`
+-  Updates: `property_type: \"Studio\"`
+-  **New database query** (cache miss)
+-  Maintains city and price range
+-  Creates new cache: `New York_Studio`
 
 ---
 
@@ -657,11 +657,11 @@ This covers:
 - All property types (Apartment, Villa, Studio, Condo)
 - Price filtering (under $3000, between ranges)
 - Bedroom filtering (2BR, 3BR)
-- Context switching (Property → Weather → Property)
+- Context switching (Property  Weather  Property)
 
 ---
 
-## 🎥 Video Demo Guide
+##  Video Demo Guide
 
 ### Recording Checklist
 
@@ -724,9 +724,9 @@ This covers:
    - Format and return results
 
 4. Click on key nodes:
-   - **Initialize State** → Show `getWorkflowStaticData('global')`
-   - **AI Agent** → Show system prompt
-   - **Check Search Ready & Cache** → Explain caching logic
+   - **Initialize State**  Show `getWorkflowStaticData('global')`
+   - **AI Agent**  Show system prompt
+   - **Check Search Ready & Cache**  Explain caching logic
 
 ---
 
@@ -790,17 +790,17 @@ This covers:
 
 **Script:**
 > \"To summarize:
-> - ✅ Stateful conversations with persistent memory
-> - ✅ Property type enforcement before searches
-> - ✅ 50%+ cache efficiency
-> - ✅ Intelligent routing between tools
-> - ✅ All mandatory tests passing
+> -  Stateful conversations with persistent memory
+> -  Property type enforcement before searches
+> -  50%+ cache efficiency
+> -  Intelligent routing between tools
+> -  All mandatory tests passing
 >
 > This AI Property Assistant is production-ready and demonstrates advanced n8n workflow design, database integration, and AI-powered automation. Thank you for watching!\"
 
 ---
 
-## 🔧 Troubleshooting
+##  Troubleshooting
 
 ### Issue: Webhook returns 404
 
@@ -847,24 +847,24 @@ This covers:
 
 ---
 
-## 📦 Project Files
+##  Project Files
 
 ```
 AI Data House/
-│
-├── n8n-workflow.json          # Complete 13-node workflow (uses env variables)
-├── supabase-schema.sql        # Database schema + 55 sample properties
-├── comprehensive-test.ps1     # Full test suite (30+ scenarios)
-├── README.md                  # This complete guide
-├── .env.example               # Template for environment variables
-└── .gitignore                 # Git ignore rules (protects sensitive data)
+
+ n8n-workflow.json          # Complete 13-node workflow (uses env variables)
+ supabase-schema.sql        # Database schema + 55 sample properties
+ comprehensive-test.ps1     # Full test suite (30+ scenarios)
+ README.md                  # This complete guide
+ .env.example               # Template for environment variables
+ .gitignore                 # Git ignore rules (protects sensitive data)
 ```
 
 **Note:** You need to create your own `.env` file with actual API keys (copy from `.env.example`).
 
 ---
 
-## 🏆 Success Criteria Checklist
+##  Success Criteria Checklist
 
 Your implementation is complete when:
 
@@ -879,7 +879,7 @@ Your implementation is complete when:
 
 ---
 
-## 📞 Quick Reference Commands
+##  Quick Reference Commands
 
 **Start n8n with environment variables:**
 ```powershell
@@ -898,11 +898,11 @@ curl -X POST http://localhost:5678/webhook/property-chat ` -H \"Content-Type: ap
 
 ---
 
-**🚀 Project Complete! Ready for demo and submission.**
+** Project Complete! Ready for demo and submission.**
 
 ---
 
-## 📄 License & Credits
+##  License & Credits
 
 - **Built for:** Hiring Assessment Project
 - **Completion Date:** March 11, 2026
@@ -912,13 +912,13 @@ curl -X POST http://localhost:5678/webhook/property-chat ` -H \"Content-Type: ap
 
 ---
 
-## 🔐 Security Best Practices
+##  Security Best Practices
 
-1. ✅ Never commit `.env` file to version control
-2. ✅ Use `.env.example` as template for required variables
-3. ✅ Keep API keys secure and rotate them periodically
-4. ✅ Use environment variables in n8n workflows
-5. ✅ Review `.gitignore` before committing
+1.  Never commit `.env` file to version control
+2.  Use `.env.example` as template for required variables
+3.  Keep API keys secure and rotate them periodically
+4.  Use environment variables in n8n workflows
+5.  Review `.gitignore` before committing
 
  
  
