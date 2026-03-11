@@ -1,0 +1,414 @@
+{
+  "name": "AI Property Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "property-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "property-assistant-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize empty conversation state for this request\nconst conversationState = {\n  property_type: null,\n  min_price: null,\n  max_price: null,\n  city: null,\n  state: null,\n  availability: true,\n  bedrooms: null\n};\n\n// Get user message from webhook body\nconst userMessage = $input.item.json.body?.message || $input.item.json.message || '';\n\n// Pass current state and message to next node\nreturn {\n  json: {\n    userMessage: userMessage,\n    currentState: conversationState,\n    cache: {}\n  }\n};"
+      },
+      "id": "init-state",
+      "name": "Initialize State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ={{$env.GROQ_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an AI assistant for a real estate platform. Your job is to:\\n1. Analyze user messages and extract property search parameters\\n2. Determine if the user is asking about PROPERTIES or WEATHER\\n3. Update the conversation state with extracted information\\n4. Maintain context across the conversation\\n\\nYou must respond with ONLY a valid JSON object with this structure:\\n{\\n  \\\"intent\\\": \\\"property_search\\\" or \\\"weather_query\\\" or \\\"clarification\\\",\\n  \\\"extracted_params\\\": {\\n    \\\"property_type\\\": \\\"string or null\\\",\\n    \\\"min_price\\\": number or null,\\n    \\\"max_price\\\": number or null,\\n    \\\"city\\\": \\\"string or null\\\",\\n    \\\"state\\\": \\\"string or null\\\",\\n    \\\"bedrooms\\\": number or null\\n  },\\n  \\\"response_message\\\": \\\"A friendly message to the user\\\"\\n}\\n\\nRules:\\n- property_type is REQUIRED before executing a property search\\n- Valid property_types: Apartment, Villa, Studio, Condo, House\\n- If user asks about weather, set intent to \\\"weather_query\\\"\\n- Always maintain previous context unless user explicitly changes it\\n- Be conversational and helpful\\n- Extract prices from phrases like 'between $2000 and $4000' or 'under $3000'\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Current conversation state: {{$json.currentState}}\\n\\nUser message: {{$json.userMessage}}\"\n    }\n  ],\n  \"temperature\": 0.3\n}",
+        "options": {}
+      },
+      "id": "ai-agent",
+      "name": "AI Agent (Groq)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response\nconst aiResponse = JSON.parse($input.item.json.choices[0].message.content);\nconst previousState = $input.first().json.currentState || {};\nconst extractedParams = aiResponse.extracted_params || {};\n\n// Update state with extracted parameters (merge with existing state)\nconst updatedState = {\n  property_type: extractedParams.property_type || previousState.property_type || null,\n  min_price: extractedParams.min_price !== null && extractedParams.min_price !== undefined ? extractedParams.min_price : (previousState.min_price || null),\n  max_price: extractedParams.max_price !== null && extractedParams.max_price !== undefined ? extractedParams.max_price : (previousState.max_price || null),\n  city: extractedParams.city || previousState.city || null,\n  state: extractedParams.state || previousState.state || null,\n  availability: true,\n  bedrooms: extractedParams.bedrooms !== null && extractedParams.bedrooms !== undefined ? extractedParams.bedrooms : (previousState.bedrooms || null)\n};\n\n// Determine if we can execute a search\nconst canSearch = updatedState.property_type && updatedState.city;\n\n// Create cache key\nconst cacheKey = updatedState.city ? `${updatedState.city}_${updatedState.property_type}` : null;\n\nreturn {\n  json: {\n    intent: aiResponse.intent || 'clarification',\n    updatedState: updatedState,\n    responseMessage: aiResponse.response_message || 'How can I help you find a property?',\n    canSearch: canSearch,\n    cacheKey: cacheKey,\n    hasCachedResults: false,\n    cachedResults: null\n  }\n};"
+      },
+      "id": "process-ai-response",
+      "name": "Process AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.intent }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "property_search",
+              "output": 0
+            },
+            {
+              "value2": "weather_query",
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": 2
+      },
+      "id": "router",
+      "name": "Intent Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.canSearch }}",
+              "value2": true
+            },
+            {
+              "value1": "={{ $json.hasCachedResults }}",
+              "value2": false
+            }
+          ]
+        }
+      },
+      "id": "check-search-ready",
+      "name": "Check Search Ready & Cache",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/properties",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_ANON_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ={{$env.SUPABASE_ANON_KEY}}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "property_type",
+              "value": "=eq.{{ $json.updatedState.property_type }}"
+            },
+            {
+              "name": "city",
+              "value": "=eq.{{ $json.updatedState.city }}"
+            },
+            {
+              "name": "availability",
+              "value": "=eq.true"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            },
+            {
+              "name": "order",
+              "value": "price.asc"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "query-supabase",
+      "name": "Query Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1450, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all property items from Supabase\nconst properties = $input.all().map(item => item.json);\nconst state = $('Process AI Response').item.json.updatedState || {};\n\n// Filter by price if specified\nlet filteredProperties = properties;\n\nif (state.min_price || state.max_price) {\n  filteredProperties = properties.filter(prop => {\n    const price = parseFloat(prop.price);\n    const meetsMin = !state.min_price || price >= state.min_price;\n    const meetsMax = !state.max_price || price <= state.max_price;\n    return meetsMin && meetsMax;\n  });\n}\n\n// Filter by bedrooms if specified\nif (state.bedrooms !== null && state.bedrooms !== undefined) {\n  filteredProperties = filteredProperties.filter(prop => prop.bedrooms === state.bedrooms);\n}\n\n// Get top 3 results\nconst top3 = filteredProperties.slice(0, 3);\n\n// Format response\nlet message = '';\n\nif (top3.length === 0) {\n  message = `I couldn't find any ${state.property_type || 'properties'} in ${state.city || 'that location'} matching your criteria. Would you like to try a different city or adjust your budget?`;\n} else {\n  const propertyType = state.property_type || 'property';\n  message = `Great news! I found ${top3.length} ${propertyType.toLowerCase()}(s) in ${state.city} that match your requirements:\\n\\n`;\n  \n  top3.forEach((prop, index) => {\n    message += `${index + 1}. ${prop.property_type || 'Property'} - $${prop.price}/month\\n`;\n    message += `   📍 ${prop.city}, ${prop.state}\\n`;\n    if (prop.bedrooms) message += `   🛏️ ${prop.bedrooms} bedroom(s)\\n`;\n    if (prop.amenities && Array.isArray(prop.amenities) && prop.amenities.length > 0) {\n      message += `   ✨ Amenities: ${prop.amenities.join(', ')}\\n`;\n    }\n    message += `\\n`;\n  });\n  \n  message += `Would you like more details on any of these properties or search with different criteria?`;\n}\n\nreturn {\n  json: {\n    message: message,\n    properties: top3,\n    fromCache: false\n  }\n};"
+      },
+      "id": "format-property-results",
+      "name": "Format Property Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simplified cached results handler\nconst cachedData = $input.item.json.cachedResults || {};\nconst state = $input.item.json.updatedState || {};\n\n// For now, just return a message asking to search again\nconst message = `Please tell me what type of property you're looking for in ${state.city || 'your desired city'}.`;\n\nreturn {\n  json: {\n    message: message,\n    properties: [],\n    fromCache: true\n  }\n};"
+      },
+      "id": "use-cached-results",
+      "name": "Use Cached Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 250]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.openweathermap.org/data/2.5/weather?q={{ $json.updatedState.city || 'New York' }}&appid={{$env.OPENWEATHER_API_KEY}}&units=imperial",
+        "options": {}
+      },
+      "id": "weather-api",
+      "name": "Weather API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const weather = $input.item.json || {};\nconst state = $('Process AI Response').item.json.updatedState || {};\n\nconst city = weather.name || state.city || 'that location';\nconst temp = weather.main?.temp ? Math.round(weather.main.temp) : 'N/A';\nconst feelsLike = weather.main?.feels_like ? Math.round(weather.main.feels_like) : 'N/A';\nconst description = weather.weather?.[0]?.description || 'unknown';\nconst humidity = weather.main?.humidity || 'N/A';\n\nconst message = `🌤️ Weather in ${city}:\\n\\n` +\n  `Temperature: ${temp}°F (feels like ${feelsLike}°F)\\n` +\n  `Conditions: ${description}\\n` +\n  `Humidity: ${humidity}%\\n\\n` +\n  `Is there anything else you'd like to know about properties in ${city}?`;\n\nreturn {\n  json: {\n    message: message,\n    weatherData: weather\n  }\n};"
+      },
+      "id": "format-weather-response",
+      "name": "Format Weather Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle clarification intent (no search or weather)\nconst message = $input.item.json.responseMessage || 'How can I help you find a property?';\nconst state = $input.item.json.updatedState || {};\n\nlet clarificationMessage = message;\n\n// Add helpful context based on what's missing\nif (!state.property_type) {\n  clarificationMessage += \"\\n\\nPlease let me know what type of property you're looking for (Apartment, Villa, Studio, Condo, or House).\";\n} else if (!state.city) {\n  clarificationMessage += \"\\n\\nWhich city are you interested in?\";\n}\n\nreturn {\n  json: {\n    message: clarificationMessage\n  }\n};"
+      },
+      "id": "handle-clarification",
+      "name": "Handle Clarification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge all possible response paths\nconst message = $input.item.json.message || 'No response available';\n\nreturn {\n  json: {\n    success: true,\n    message: message,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "final-response",
+      "name": "Final Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 300]
+    }
+  ],
+  "connections": {
+    "Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize State": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (Groq)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (Groq)": {
+      "main": [
+        [
+          {
+            "node": "Process AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process AI Response": {
+      "main": [
+        [
+          {
+            "node": "Intent Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Router": {
+      "main": [
+        [
+          {
+            "node": "Check Search Ready & Cache",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Weather API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Clarification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Search Ready & Cache": {
+      "main": [
+        [
+          {
+            "node": "Query Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Use Cached Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Supabase": {
+      "main": [
+        [
+          {
+            "node": "Format Property Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Property Results": {
+      "main": [
+        [
+          {
+            "node": "Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Cached Results": {
+      "main": [
+        [
+          {
+            "node": "Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather API": {
+      "main": [
+        [
+          {
+            "node": "Format Weather Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Weather Response": {
+      "main": [
+        [
+          {
+            "node": "Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Clarification": {
+      "main": [
+        [
+          {
+            "node": "Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-11T00:00:00.000Z",
+  "versionId": "1"
+}
